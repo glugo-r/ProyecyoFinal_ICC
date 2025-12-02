@@ -14,12 +14,13 @@ public class DatabaseManager {
     
     public static void guardarUsuarios(List<Usuario> usuarios) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(USUARIOS_FILE))) {
-            writer.println("id,nombre,email,rol");
+            writer.println("id,nombre,email,rol,password");
             for (Usuario usuario : usuarios) {
                 writer.println(usuario.getId() + "," + 
                               usuario.getNombre() + "," + 
                               usuario.getEmail() + "," + 
-                              usuario.getRol());
+                              usuario.getRol() + "," +
+                              usuario.getPassword());
             }
         } catch (IOException e) {
             System.out.println("Error al guardar usuarios: " + e.getMessage());
@@ -27,50 +28,72 @@ public class DatabaseManager {
     }
     
     public static List<Usuario> cargarUsuarios() {
-        List<Usuario> usuarios = new ArrayList<>();
-        File file = new File(USUARIOS_FILE);
-        
-        if (!file.exists()) {
-            // Crear Sudo por defecto
-            usuarios.add(new Sudo());
-            guardarUsuarios(usuarios);
-            return usuarios;
-        }
-        
-        try (BufferedReader reader = new BufferedReader(new FileReader(USUARIOS_FILE))) {
-            String line;
-            boolean firstLine = true;
-            
-            while ((line = reader.readLine()) != null) {
-                if (firstLine) {
-                    firstLine = false;
-                    continue;
-                }
-                
-                String[] datos = line.split(",");
-                if (datos.length >= 4) {
-                    switch (datos[3]) {
-                        case "Sudo":
-                            usuarios.add(new Sudo());
-                            break;
-                        case "Administrador":
-                            usuarios.add(new Administrador(datos[1], datos[2]));
-                            break;
-                        case "Cocinero":
-                            usuarios.add(new Cocinero(datos[1], datos[2]));
-                            break;
-                        case "Mesero":
-                            usuarios.add(new Mesero(datos[1], datos[2]));
-                            break;
-                    }
-                }
-            }
-        } catch (IOException e) {
-            System.out.println("Error al cargar usuarios: " + e.getMessage());
-        }
-        
+    List<Usuario> usuarios = new ArrayList<>();
+    File file = new File(USUARIOS_FILE);
+    
+    if (!file.exists()) {
+        // Crear Sudo por defecto
+        Sudo sudo = new Sudo();
+        usuarios.add(sudo);
+        guardarUsuarios(usuarios);
+        System.out.println("Usuario Sudo creado por defecto: email=sudo@restaurante.com, password=admin123");
         return usuarios;
     }
+    
+    try (BufferedReader reader = new BufferedReader(new FileReader(USUARIOS_FILE))) {
+        String line;
+        boolean firstLine = true;
+        
+        while ((line = reader.readLine()) != null) {
+            if (firstLine) {
+                firstLine = false;
+                continue;
+            }
+            
+            String[] datos = line.split(",");
+            if (datos.length >= 5) {
+                switch (datos[3]) {
+                    case "Sudo":
+                        Sudo sudo = new Sudo();
+                        sudo.setNombre(datos[1]);
+                        sudo.setEmail(datos[2]);
+                        sudo.setPassword(datos[4]);
+                        usuarios.add(sudo);
+                        break;
+                    case "Administrador":
+                        usuarios.add(new Administrador(datos[1], datos[2], datos[4]));
+                        break;
+                    case "Cocinero":
+                        usuarios.add(new Cocinero(datos[1], datos[2], datos[4]));
+                        break;
+                    case "Mesero":
+                        usuarios.add(new Mesero(datos[1], datos[2], datos[4]));
+                        break;
+                }
+            } else if (datos.length >= 4) {
+                // Para archivos antiguos sin contraseña
+                switch (datos[3]) {
+                    case "Sudo":
+                        usuarios.add(new Sudo());
+                        break;
+                    case "Administrador":
+                        usuarios.add(new Administrador(datos[1], datos[2], "admin123"));
+                        break;
+                    case "Cocinero":
+                        usuarios.add(new Cocinero(datos[1], datos[2], "admin123"));
+                        break;
+                    case "Mesero":
+                        usuarios.add(new Mesero(datos[1], datos[2], "admin123"));
+                        break;
+                }
+            }
+        }
+    } catch (IOException e) {
+        System.out.println("Error al cargar usuarios: " + e.getMessage());
+    }
+    
+    return usuarios;
+}
     
     public static void guardarPlatillos(List<Platillo> platillos) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(PLATILLOS_FILE))) {
