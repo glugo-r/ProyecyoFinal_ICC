@@ -1,0 +1,5 @@
+id,nombre,email,rol
+1,SuperAdmin,sudo@restaurante.com,Sudo
+2,Juan Pérez,juanp@.com,Administrador
+3,Leonardo Sánchez,leonardos@.com,Cocinero
+4,Bruno,bruno@.com,Mesero
