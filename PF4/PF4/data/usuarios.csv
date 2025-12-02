@@ -1,0 +1,3 @@
+id,nombre,email,rol,password
+1,SuperAdmin,sudo@restaurante.com,Sudo,admin123
+2,Bruno Sánchez,brunos@.com,Administrador,bruno123
