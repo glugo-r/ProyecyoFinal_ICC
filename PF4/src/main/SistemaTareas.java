@@ -16,14 +16,31 @@ public class SistemaTareas {
     private double ventasDia;
     
     public SistemaTareas() {
-        this.usuarios = DatabaseManager.cargarUsuarios();
-        this.tareas = new ArrayList<>();
-        this.platillos = new ArrayList<>();
-        this.mesas = new ArrayList<>();
-        this.ordenes = new ArrayList<>();
-        this.ventasDia = 0.0;
-        inicializarDatos();
+    this.usuarios = DatabaseManager.cargarUsuarios();
+    this.tareas = new ArrayList<>();
+    this.platillos = new ArrayList<>();
+    this.mesas = new ArrayList<>();
+    this.ordenes = new ArrayList<>();
+    this.ventasDia = 0.0;
+    
+    // Verificar si existe el Sudo
+    boolean sudoExiste = usuarios.stream()
+        .anyMatch(u -> u instanceof Sudo);
+    
+    if (!sudoExiste) {
+        System.out.println("Creando usuario Sudo por defecto...");
+        Sudo sudo = new Sudo();
+        usuarios.add(sudo);
+        try {
+            DatabaseManager.guardarUsuarios(usuarios);
+            System.out.println("Sudo creado: email=sudo@restaurante.com, password=admin123");
+        } catch (Exception e) {
+            System.out.println("Error al crear Sudo: " + e.getMessage());
+        }
     }
+    
+    inicializarDatos();
+}
     
     private void inicializarDatos() {
         // Inicializar mesas
@@ -39,6 +56,13 @@ public class SistemaTareas {
         platillos.add(new Platillo("Postre de chocolate", "Pastel de chocolate con helado", 7.99, 8, "Postre"));
         
         DatabaseManager.guardarPlatillos(platillos);
+    }
+    
+    public Usuario autenticarUsuario(String email, String password) {
+        return usuarios.stream()
+            .filter(u -> u.getEmail().equals(email) && u.verificarPassword(password))
+            .findFirst()
+            .orElse(null);
     }
     
     public void agregarUsuario(Usuario usuario) throws EmailInvalidoException, NombreInvalidoException {
@@ -67,11 +91,19 @@ public class SistemaTareas {
     }
     
     public void listarUsuarios() {
-        for (Usuario usuario : usuarios) {
-            usuario.mostrarInfo();
-            System.out.println("-------------------");
-        }
+    listarUsuarios(false); // Por defecto no mostrar contraseñas
+}
+
+public void listarUsuarios(boolean mostrarPasswords) {
+    System.out.println("\n=== LISTA DE USUARIOS ===");
+    System.out.println("Total usuarios: " + usuarios.size());
+    System.out.println("-------------------");
+    
+    for (Usuario usuario : usuarios) {
+        usuario.mostrarInfo(mostrarPasswords);
+        System.out.println("-------------------");
     }
+}
     
     public void listarTareas() {
         for (Tarea tarea : tareas) {

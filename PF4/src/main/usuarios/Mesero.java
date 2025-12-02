@@ -8,8 +8,8 @@ public class Mesero extends Empleado {
     private int mesasAtendidas;
     private List<Orden> ordenesActivas;
     
-    public Mesero(String nombre, String email) {
-        super(nombre, email, "Mesero");
+    public Mesero(String nombre, String email, String password) {
+        super(nombre, email, "Mesero", password);
         this.mesasAtendidas = 0;
         this.ordenesActivas = new ArrayList<>();
     }
