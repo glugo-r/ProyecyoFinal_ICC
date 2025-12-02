@@ -16,14 +16,31 @@ public class SistemaTareas {
     private double ventasDia;
     
     public SistemaTareas() {
-        this.usuarios = DatabaseManager.cargarUsuarios();
-        this.tareas = new ArrayList<>();
-        this.platillos = new ArrayList<>();
-        this.mesas = new ArrayList<>();
-        this.ordenes = new ArrayList<>();
-        this.ventasDia = 0.0;
-        inicializarDatos();
+    this.usuarios = DatabaseManager.cargarUsuarios();
+    this.tareas = new ArrayList<>();
+    this.platillos = new ArrayList<>();
+    this.mesas = new ArrayList<>();
+    this.ordenes = new ArrayList<>();
+    this.ventasDia = 0.0;
+    
+    // Verificar si existe el Sudo
+    boolean sudoExiste = usuarios.stream()
+        .anyMatch(u -> u instanceof Sudo);
+    
+    if (!sudoExiste) {
+        System.out.println("Creando usuario Sudo por defecto...");
+        Sudo sudo = new Sudo();
+        usuarios.add(sudo);
+        try {
+            DatabaseManager.guardarUsuarios(usuarios);
+            System.out.println("Sudo creado: email=sudo@restaurante.com, password=admin123");
+        } catch (Exception e) {
+            System.out.println("Error al crear Sudo: " + e.getMessage());
+        }
     }
+    
+    inicializarDatos();
+}
     
     private void inicializarDatos() {
         // Inicializar mesas
@@ -41,6 +58,13 @@ public class SistemaTareas {
         DatabaseManager.guardarPlatillos(platillos);
     }
     
+    public Usuario autenticarUsuario(String email, String password) {
+        return usuarios.stream()
+            .filter(u -> u.getEmail().equals(email) && u.verificarPassword(password))
+            .findFirst()
+            .orElse(null);
+    }
+    
     public void agregarUsuario(Usuario usuario) throws EmailInvalidoException, NombreInvalidoException {
         validarEmail(usuario.getEmail());
         validarNombre(usuario.getNombre());
@@ -49,13 +73,33 @@ public class SistemaTareas {
     }
     
     public void eliminarUsuario(int id) {
-        if (id == 1) { // No se puede eliminar al Sudo
-            System.out.println("No se puede eliminar al super administrador.");
-            return;
+    if (id == 1) { // No se puede eliminar al Sudo
+        System.out.println("No se puede eliminar al super administrador.");
+        return;
+    }
+    
+    Usuario usuario = buscarUsuarioPorId(id);
+    if (usuario != null) {
+        // Verificar si el usuario tiene tareas asignadas
+        if (usuario instanceof Empleado) {
+            Empleado empleado = (Empleado) usuario;
+            if (!empleado.getTareasAsignadas().isEmpty()) {
+                System.out.println("Advertencia: Este empleado tiene " + 
+                                 empleado.getTareasAsignadas().size() + 
+                                 " tareas asignadas. Serán removidas.");
+                
+                // Remover tareas asignadas
+                for (Tarea tarea : empleado.getTareasAsignadas()) {
+                    tarea.setUsuarioAsignado(null);
+                }
+            }
         }
+        
         usuarios.removeIf(u -> u.getId() == id);
         DatabaseManager.guardarUsuarios(usuarios);
+        System.out.println("Usuario eliminado exitosamente.");
     }
+}
     
     public void agregarTarea(Tarea tarea) {
         tareas.add(tarea);
@@ -67,18 +111,45 @@ public class SistemaTareas {
     }
     
     public void listarUsuarios() {
-        for (Usuario usuario : usuarios) {
-            usuario.mostrarInfo();
-            System.out.println("-------------------");
-        }
+    listarUsuarios(false); // Por defecto no mostrar contraseñas
+}
+
+public void listarUsuarios(boolean mostrarPasswords) {
+    System.out.println("\n=== LISTA DE USUARIOS ===");
+    System.out.println("Total usuarios: " + usuarios.size());
+    System.out.println("-------------------");
+    
+    for (Usuario usuario : usuarios) {
+        usuario.mostrarInfo(mostrarPasswords);
+        System.out.println("-------------------");
     }
+}
     
     public void listarTareas() {
-        for (Tarea tarea : tareas) {
-            tarea.mostrarDetalles();
-            System.out.println("-------------------");
-        }
+    if (tareas.isEmpty()) {
+        System.out.println("No hay tareas registradas.");
+        return;
     }
+    
+    System.out.println("\n=== LISTA DE TAREAS ===");
+    System.out.println("Total tareas: " + tareas.size());
+    System.out.println("-------------------");
+    
+    for (Tarea tarea : tareas) {
+        System.out.println("ID: " + tarea.getId());
+        System.out.println("Título: " + tarea.getTitulo());
+        System.out.println("Descripción: " + tarea.getDescripcion());
+        System.out.println("Fecha Límite: " + tarea.getFechaLimite());
+        System.out.println("Estado: " + tarea.getEstado());
+        if (tarea.getUsuarioAsignado() != null) {
+            System.out.println("Asignado a: " + tarea.getUsuarioAsignado().getNombre() + 
+                             " (ID: " + tarea.getUsuarioAsignado().getId() + ")");
+        } else {
+            System.out.println("Asignado a: Sin asignar");
+        }
+        System.out.println("-------------------");
+    }
+}
     
     public List<Empleado> getEmpleados() {
         return usuarios.stream()
@@ -109,10 +180,10 @@ public class SistemaTareas {
     }
     
     private void validarEmail(String email) throws EmailInvalidoException {
-        if (!email.contains("@") || !email.contains(".")) {
-            throw new EmailInvalidoException("El email debe contener @ y .");
-        }
+    if (!email.contains("@") || !email.endsWith(".com")) {
+        throw new EmailInvalidoException("El email debe contener @ y terminar en .com");
     }
+}
     
     private void validarNombre(String nombre) throws NombreInvalidoException {
         if (nombre == null || nombre.trim().length() < 3) {
