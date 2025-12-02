@@ -42,16 +42,47 @@ public class Orden {
         return !platillos.isEmpty() && platillosListos.size() == platillos.size();
     }
     
+    public boolean platilloEstaEnOrden(Platillo platillo) {
+        return platillos.contains(platillo);
+    }
+    
+    public boolean platilloYaEstaListo(Platillo platillo) {
+        return platillosListos.contains(platillo);
+    }
+    
     public void mostrarOrden() {
         System.out.println("Orden #" + id + " - Mesa: " + mesa.getNumero());
         System.out.println("Mesero: " + mesero.getNombre());
         System.out.println("Fecha: " + fecha);
         System.out.println("Platillos:");
         for (Platillo p : platillos) {
-            System.out.println("  - " + p.getNombre() + " $" + p.getPrecio());
+            boolean listo = platillosListos.contains(p);
+            System.out.println("  [ID: " + p.getId() + "] " + p.getNombre() + 
+                             " $" + p.getPrecio() + 
+                             " - " + (listo ? "✅ LISTO" : "⏳ PENDIENTE"));
         }
         System.out.println("Total: $" + total);
-        System.out.println("Estado: " + (estaLista() ? "Lista" : "En preparación"));
+        System.out.println("Estado general: " + (estaLista() ? "✅ LISTA PARA ENTREGAR" : "🔄 EN PREPARACIÓN"));
+        System.out.println("Platillos listos: " + platillosListos.size() + "/" + platillos.size());
+    }
+    
+    public void mostrarPlatillosParaCocinero() {
+        System.out.println("\n=== PLATILLOS DE LA ORDEN #" + id + " ===");
+        System.out.println("Mesa: " + mesa.getNumero());
+        System.out.println("Platillos a preparar:");
+        
+        if (platillos.isEmpty()) {
+            System.out.println("  No hay platillos en esta orden.");
+            return;
+        }
+        
+        for (Platillo p : platillos) {
+            boolean listo = platillosListos.contains(p);
+            System.out.println("  [ID: " + p.getId() + "] " + p.getNombre() + 
+                             " - $" + p.getPrecio() + 
+                             " | Tiempo: " + p.getTiempoPreparacion() + " min" +
+                             " | Estado: " + (listo ? "✅ LISTO" : "⏳ PENDIENTE"));
+        }
     }
     
     // Getters y Setters
@@ -60,5 +91,12 @@ public class Orden {
     public Mesero getMesero() { return mesero; }
     public double getTotal() { return total; }
     public boolean isEntregada() { return entregada; }
+    public List<Platillo> getPlatillos() { return new ArrayList<>(platillos); }
+    public List<Platillo> getPlatillosListos() { return new ArrayList<>(platillosListos); }
+    public List<Platillo> getPlatillosPendientes() {
+        List<Platillo> pendientes = new ArrayList<>(platillos);
+        pendientes.removeAll(platillosListos);
+        return pendientes;
+    }
     public void setEntregada(boolean entregada) { this.entregada = entregada; }
 }
