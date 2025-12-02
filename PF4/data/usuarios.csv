@@ -1,5 +1,6 @@
-id,nombre,email,rol
-1,SuperAdmin,sudo@restaurante.com,Sudo
-2,Juan Pérez,juanp@.com,Administrador
-3,Leonardo Sánchez,leonardos@.com,Cocinero
-4,Bruno,bruno@.com,Mesero
+id,nombre,email,rol,password
+1,SuperAdmin,sudo@restaurante.com,Sudo,admin123
+2,Bruno Sánchez,brunos@.com,Administrador,bruno123
+5,Juan Pérez,juanp@restaurante.com,Administrador,juan123
+6,Rodrigo Sánches,rodrigos@restaurante.com,Cocinero,rodrigo123
+7,Monica Rul,monicar@restaurante.com,Mesero,monica123

@@ -57,21 +57,18 @@ public class Main {
         System.out.print("Ingrese email: ");
         String email = scanner.nextLine();
         
-        System.out.print("Ingrese nombre: ");
-        String nombre = scanner.nextLine();
+        System.out.print("Ingrese contraseña: ");
+        String password = scanner.nextLine();
         
-        // Buscar usuario
-        Usuario usuario = sistema.getUsuarios().stream()
-            .filter(u -> u.getEmail().equals(email) && u.getNombre().equals(nombre))
-            .findFirst()
-            .orElse(null);
+        // Autenticar usuario
+        Usuario usuario = sistema.autenticarUsuario(email, password);
         
         if (usuario != null) {
             sistema.setUsuarioActual(usuario);
             System.out.println("¡Bienvenido, " + usuario.getNombre() + "!");
             mostrarMenuSegunRol();
         } else {
-            System.out.println("Usuario no encontrado");
+            System.out.println("Credenciales incorrectas. Intente nuevamente.");
         }
     }
     
@@ -102,7 +99,8 @@ public class Main {
         System.out.println("2. Listar todos los usuarios");
         System.out.println("3. Ver ventas del día");
         System.out.println("4. Ver mi información");
-        System.out.println("5. Cerrar sesión");
+        System.out.println("5. Cambiar mi contraseña");
+        System.out.println("6. Cerrar sesión");
         System.out.print("Seleccione opción: ");
         
         int opcion = leerEntero();
@@ -112,9 +110,12 @@ public class Main {
                 crearNuevoAdministrador();
                 System.out.println("\nPresione Enter para continuar...");
                 scanner.nextLine();
-                return false; // Continuar en el menú Sudo
+                return false;
             case 2:
-                sistema.listarUsuarios();
+                System.out.println("\n¿Mostrar contraseñas? (s/n): ");
+                String respuesta = scanner.nextLine().toLowerCase();
+                boolean mostrarPasswords = respuesta.equals("s") || respuesta.equals("si");
+                sistema.listarUsuarios(mostrarPasswords);
                 System.out.println("\nPresione Enter para continuar...");
                 scanner.nextLine();
                 return false;
@@ -124,19 +125,45 @@ public class Main {
                 scanner.nextLine();
                 return false;
             case 4:
-                sistema.getUsuarioActual().mostrarInfo();
+                sistema.getUsuarioActual().mostrarInfo(true);
                 System.out.println("\nPresione Enter para continuar...");
                 scanner.nextLine();
                 return false;
             case 5:
+                cambiarPasswordSudo();
+                System.out.println("\nPresione Enter para continuar...");
+                scanner.nextLine();
+                return false;
+            case 6:
                 sistema.setUsuarioActual(null);
                 System.out.println("Sesión cerrada correctamente.");
-                return true; // Cerrar sesión
+                return true;
             default:
                 System.out.println("Opción inválida");
                 System.out.println("\nPresione Enter para continuar...");
                 scanner.nextLine();
                 return false;
+        }
+    }
+    
+    private static void cambiarPasswordSudo() {
+        System.out.print("Ingrese nueva contraseña: ");
+        String nuevaPassword = scanner.nextLine();
+        
+        System.out.print("Confirme nueva contraseña: ");
+        String confirmPassword = scanner.nextLine();
+        
+        if (nuevaPassword.equals(confirmPassword)) {
+            if (nuevaPassword.length() < 4) {
+                System.out.println("La contraseña debe tener al menos 4 caracteres.");
+                return;
+            }
+            
+            sistema.getUsuarioActual().setPassword(nuevaPassword);
+            DatabaseManager.guardarUsuarios(sistema.getUsuarios());
+            System.out.println("Contraseña cambiada exitosamente.");
+        } else {
+            System.out.println("Las contraseñas no coinciden.");
         }
     }
     
@@ -179,7 +206,7 @@ public class Main {
                 scanner.nextLine();
                 return false;
             case 6:
-                admin.mostrarInfo();
+                admin.mostrarInfo(false);
                 System.out.println("\nPresione Enter para continuar...");
                 scanner.nextLine();
                 return false;
@@ -196,10 +223,13 @@ public class Main {
     }
     
     private static boolean mostrarMenuCocinero(Cocinero cocinero) {
-        System.out.println("\n1. Ver mis tareas");
-        System.out.println("2. Ver órdenes pendientes");
-        System.out.println("3. Marcar platillo como listo");
-        System.out.println("4. Ver platillos preparados hoy");
+        System.out.println("\n=== MENÚ COCINERO ===");
+        System.out.println("Bienvenido, " + cocinero.getNombre());
+        System.out.println("Platillos preparados hoy: " + cocinero.getPlatillosPreparados());
+        System.out.println("\n1. Ver mis tareas asignadas");
+        System.out.println("2. Ver órdenes pendientes (resumen)");
+        System.out.println("3. Ver detalles de órdenes pendientes");
+        System.out.println("4. Marcar platillo como listo");
         System.out.println("5. Ver mi información");
         System.out.println("6. Cerrar sesión");
         System.out.print("Seleccione opción: ");
@@ -213,22 +243,22 @@ public class Main {
                 scanner.nextLine();
                 return false;
             case 2:
-                verOrdenesPendientes();
+                verResumenOrdenesPendientes();
                 System.out.println("\nPresione Enter para continuar...");
                 scanner.nextLine();
                 return false;
             case 3:
-                marcarPlatilloListo(cocinero);
+                verOrdenesPendientes();
                 System.out.println("\nPresione Enter para continuar...");
                 scanner.nextLine();
                 return false;
             case 4:
-                System.out.println("Platillos preparados: " + cocinero.getPlatillosPreparados());
+                marcarPlatilloListo(cocinero);
                 System.out.println("\nPresione Enter para continuar...");
                 scanner.nextLine();
                 return false;
             case 5:
-                cocinero.mostrarInfo();
+                cocinero.mostrarInfo(false);
                 System.out.println("\nPresione Enter para continuar...");
                 scanner.nextLine();
                 return false;
@@ -283,7 +313,7 @@ public class Main {
                 scanner.nextLine();
                 return false;
             case 6:
-                mesero.mostrarInfo();
+                mesero.mostrarInfo(false);
                 System.out.println("\nPresione Enter para continuar...");
                 scanner.nextLine();
                 return false;
@@ -307,7 +337,10 @@ public class Main {
             System.out.print("Email: ");
             String email = scanner.nextLine();
             
-            Administrador nuevoAdmin = new Administrador(nombre, email);
+            System.out.print("Contraseña: ");
+            String password = scanner.nextLine();
+            
+            Administrador nuevoAdmin = new Administrador(nombre, email, password);
             sistema.agregarUsuario(nuevoAdmin);
             System.out.println("Administrador creado exitosamente");
         } catch (EmailInvalidoException | NombreInvalidoException e) {
@@ -366,7 +399,7 @@ public class Main {
             System.out.println("No hay empleados registrados");
         } else {
             for (Empleado emp : empleados) {
-                emp.mostrarInfo();
+                emp.mostrarInfo(false);
                 System.out.println("-------------------");
             }
         }
@@ -386,12 +419,15 @@ public class Main {
         System.out.print("Email: ");
         String email = scanner.nextLine();
         
+        System.out.print("Contraseña: ");
+        String password = scanner.nextLine();
+        
         try {
             if (tipo == 1) {
-                sistema.agregarUsuario(new Cocinero(nombre, email));
+                sistema.agregarUsuario(new Cocinero(nombre, email, password));
                 System.out.println("Cocinero agregado exitosamente");
             } else if (tipo == 2) {
-                sistema.agregarUsuario(new Mesero(nombre, email));
+                sistema.agregarUsuario(new Mesero(nombre, email, password));
                 System.out.println("Mesero agregado exitosamente");
             } else {
                 System.out.println("Opción inválida");
@@ -419,7 +455,11 @@ public class Main {
         mesa.setOcupada(true);
         System.out.println("\nPlatillos disponibles:");
         for (Platillo platillo : sistema.getPlatillos()) {
-            platillo.mostrarInfo();
+            System.out.println("[ID: " + platillo.getId() + "] " + 
+                             platillo.getNombre() + 
+                             " - $" + platillo.getPrecio() +
+                             " (" + platillo.getTiempoPreparacion() + " min)");
+            System.out.println("  Descripción: " + platillo.getDescripcion());
             System.out.println("-------------------");
         }
         
@@ -470,48 +510,197 @@ public class Main {
         }
     }
     
-    private static void marcarPlatilloListo(Cocinero cocinero) {
-        verOrdenesPendientes();
-        System.out.print("ID de la orden: ");
-        int idOrden = leerEntero();
+    private static void verResumenOrdenesPendientes() {
+        List<Orden> ordenesPendientes = sistema.getOrdenes().stream()
+            .filter(o -> !o.isEntregada())
+            .collect(java.util.stream.Collectors.toList());
         
-        Orden orden = sistema.getOrdenes().stream()
-            .filter(o -> o.getId() == idOrden)
-            .findFirst()
-            .orElse(null);
-        
-        if (orden == null) {
-            System.out.println("Orden no encontrada");
+        if (ordenesPendientes.isEmpty()) {
+            System.out.println("✅ No hay órdenes pendientes.");
             return;
         }
         
-        System.out.print("ID del platillo a marcar como listo: ");
-        int idPlatillo = leerEntero();
+        System.out.println("\n=== RESUMEN DE ÓRDENES PENDIENTES ===");
+        System.out.println("Total órdenes: " + ordenesPendientes.size());
         
-        Platillo platillo = sistema.getPlatillos().stream()
-            .filter(p -> p.getId() == idPlatillo)
-            .findFirst()
-            .orElse(null);
-        
-        if (platillo != null) {
-            cocinero.marcarComidaLista(orden, platillo);
-        } else {
-            System.out.println("Platillo no encontrado");
+        for (Orden orden : ordenesPendientes) {
+            int totalPlatillos = orden.getPlatillos().size();
+            int listos = orden.getPlatillosListos().size();
+            int pendientes = totalPlatillos - listos;
+            
+            String estado = orden.estaLista() ? "✅ LISTA" : "🔄 EN PROCESO";
+            
+            System.out.println("\nOrden #" + orden.getId() + 
+                             " | Mesa: " + orden.getMesa().getNumero() +
+                             " | " + estado +
+                             " | Platillos: " + listos + "/" + totalPlatillos);
+            
+            if (pendientes > 0) {
+                System.out.print("  Pendientes: ");
+                for (Platillo p : orden.getPlatillosPendientes()) {
+                    System.out.print("[ID:" + p.getId() + "] ");
+                }
+                System.out.println();
+            }
         }
     }
     
     private static void verOrdenesMesero(Mesero mesero) {
         List<Orden> ordenesMesero = sistema.getOrdenes().stream()
-            .filter(o -> o.getMesero().getId() == mesero.getId())
+            .filter(o -> o.getMesero().getId() == mesero.getId() && !o.isEntregada())
             .collect(java.util.stream.Collectors.toList());
         
         if (ordenesMesero.isEmpty()) {
             System.out.println("No tienes órdenes activas");
         } else {
+            System.out.println("\n=== MIS ÓRDENES ACTIVAS ===");
+            System.out.println("Total órdenes: " + ordenesMesero.size());
+            
             for (Orden orden : ordenesMesero) {
-                orden.mostrarOrden();
-                System.out.println("===================");
+                System.out.println("\n[Orden #" + orden.getId() + "]");
+                System.out.println("Mesa: " + orden.getMesa().getNumero());
+                
+                // Mostrar estado de la orden
+                if (orden.estaLista()) {
+                    System.out.println("Estado: ✅ LISTA PARA ENTREGAR");
+                } else {
+                    int total = orden.getPlatillos().size();
+                    int listos = orden.getPlatillosListos().size();
+                    System.out.println("Estado: 🔄 EN PREPARACIÓN (" + listos + "/" + total + " listos)");
+                }
+                
+                // Mostrar platillos con su estado
+                System.out.println("Platillos:");
+                for (Platillo platillo : orden.getPlatillos()) {
+                    boolean listo = orden.getPlatillosListos().contains(platillo);
+                    System.out.println("  - " + platillo.getNombre() + 
+                                     " $" + platillo.getPrecio() +
+                                     " [" + (listo ? "✅ LISTO" : "⏳ PREPARANDO") + "]");
+                }
+                
+                System.out.println("Total: $" + orden.getTotal());
+                System.out.println("-------------------");
             }
+        }
+    }
+    
+    private static void marcarPlatilloListo(Cocinero cocinero) {
+        // Mostrar órdenes pendientes
+        List<Orden> ordenesPendientes = sistema.getOrdenes().stream()
+            .filter(o -> !o.isEntregada())
+            .collect(java.util.stream.Collectors.toList());
+        
+        if (ordenesPendientes.isEmpty()) {
+            System.out.println("No hay órdenes pendientes para preparar.");
+            return;
+        }
+        
+        System.out.println("\n=== ÓRDENES PENDIENTES ===");
+        for (Orden orden : ordenesPendientes) {
+            System.out.println("\n[Orden #" + orden.getId() + "]");
+            System.out.println("Mesa: " + orden.getMesa().getNumero());
+            System.out.println("Mesero: " + orden.getMesero().getNombre());
+            System.out.println("Platillos: " + orden.getPlatillos().size() + 
+                             " | Listos: " + orden.getPlatillosListos().size() +
+                             " | Pendientes: " + orden.getPlatillosPendientes().size());
+            System.out.println("-------------------");
+        }
+        
+        System.out.print("\nID de la orden a trabajar: ");
+        int idOrden = leerEntero();
+        
+        Orden orden = sistema.getOrdenes().stream()
+            .filter(o -> o.getId() == idOrden && !o.isEntregada())
+            .findFirst()
+            .orElse(null);
+        
+        if (orden == null) {
+            System.out.println("Orden no encontrada o ya entregada.");
+            return;
+        }
+        
+        // Mostrar platillos específicos de esta orden
+        System.out.println("\n=== PLATILLOS DE LA ORDEN #" + orden.getId() + " ===");
+        
+        List<Platillo> platillosPendientes = orden.getPlatillosPendientes();
+        List<Platillo> platillosListos = orden.getPlatillosListos();
+        
+        if (platillosPendientes.isEmpty()) {
+            System.out.println("¡Todos los platillos de esta orden ya están listos!");
+            System.out.println("Estado: ✅ LISTA PARA ENTREGAR");
+            return;
+        }
+        
+        System.out.println("Platillos PENDIENTES de preparar:");
+        for (Platillo platillo : platillosPendientes) {
+            System.out.println("  [ID: " + platillo.getId() + "] " + 
+                             platillo.getNombre() + 
+                             " | Tiempo: " + platillo.getTiempoPreparacion() + " min" +
+                             " | $" + platillo.getPrecio());
+        }
+        
+        if (!platillosListos.isEmpty()) {
+            System.out.println("\nPlatillos YA LISTOS:");
+            for (Platillo platillo : platillosListos) {
+                System.out.println("  [ID: " + platillo.getId() + "] " + 
+                                 platillo.getNombre() + " ✅");
+            }
+        }
+        
+        System.out.print("\nID del platillo a marcar como listo (0 para cancelar): ");
+        int idPlatillo = leerEntero();
+        
+        if (idPlatillo == 0) {
+            System.out.println("Operación cancelada.");
+            return;
+        }
+        
+        // Buscar el platillo en los pendientes de esta orden
+        Platillo platilloSeleccionado = null;
+        for (Platillo platillo : platillosPendientes) {
+            if (platillo.getId() == idPlatillo) {
+                platilloSeleccionado = platillo;
+                break;
+            }
+        }
+        
+        if (platilloSeleccionado == null) {
+            // Verificar si el platillo ya está listo
+            boolean yaListo = false;
+            for (Platillo platillo : platillosListos) {
+                if (platillo.getId() == idPlatillo) {
+                    yaListo = true;
+                    break;
+                }
+            }
+            
+            if (yaListo) {
+                System.out.println("Este platillo ya está marcado como listo.");
+            } else {
+                System.out.println("Error: El platillo con ID " + idPlatillo + 
+                                 " no está en esta orden o no existe.");
+            }
+            return;
+        }
+        
+        // Marcar el platillo como listo
+        cocinero.marcarComidaLista(orden, platilloSeleccionado);
+        System.out.println("✅ Platillo '" + platilloSeleccionado.getNombre() + 
+                         "' marcado como LISTO.");
+        
+        // Verificar si todos los platillos están listos
+        if (orden.estaLista()) {
+            System.out.println("\n🎉 ¡¡¡TODOS LOS PLATILLOS DE LA ORDEN #" + 
+                             orden.getId() + " ESTÁN LISTOS!!!");
+            System.out.println("📢 Informar al mesero que la orden está lista para entregar.");
+            System.out.println("Mesa: " + orden.getMesa().getNumero());
+            System.out.println("Mesero asignado: " + orden.getMesero().getNombre());
+        } else {
+            int pendientes = orden.getPlatillosPendientes().size();
+            int total = orden.getPlatillos().size();
+            System.out.println("🔄 Progreso: " + (total - pendientes) + "/" + 
+                             total + " platillos listos");
+            System.out.println("⏳ Aún faltan " + pendientes + " platillo(s) por preparar.");
         }
     }
     
@@ -526,6 +715,19 @@ public class Main {
             .orElse(null);
         
         if (orden != null) {
+            if (!orden.estaLista()) {
+                System.out.println("⚠️  Esta orden no está completamente lista.");
+                System.out.println("Platillos pendientes: " + 
+                                 orden.getPlatillosPendientes().size() + "/" + 
+                                 orden.getPlatillos().size());
+                System.out.print("¿Desea continuar con la entrega? (s/n): ");
+                String respuesta = scanner.nextLine().toLowerCase();
+                if (!respuesta.equals("s") && !respuesta.equals("si")) {
+                    System.out.println("Entrega cancelada.");
+                    return;
+                }
+            }
+            
             mesero.entregarPedido(orden);
             orden.getMesa().setOcupada(false);
         } else {
