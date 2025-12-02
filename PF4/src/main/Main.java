@@ -57,21 +57,18 @@ public class Main {
         System.out.print("Ingrese email: ");
         String email = scanner.nextLine();
         
-        System.out.print("Ingrese nombre: ");
-        String nombre = scanner.nextLine();
+        System.out.print("Ingrese contraseña: ");
+        String password = scanner.nextLine();
         
-        // Buscar usuario
-        Usuario usuario = sistema.getUsuarios().stream()
-            .filter(u -> u.getEmail().equals(email) && u.getNombre().equals(nombre))
-            .findFirst()
-            .orElse(null);
+        // Autenticar usuario
+        Usuario usuario = sistema.autenticarUsuario(email, password);
         
         if (usuario != null) {
             sistema.setUsuarioActual(usuario);
             System.out.println("¡Bienvenido, " + usuario.getNombre() + "!");
             mostrarMenuSegunRol();
         } else {
-            System.out.println("Usuario no encontrado");
+            System.out.println("Credenciales incorrectas. Intente nuevamente.");
         }
     }
     
@@ -102,7 +99,8 @@ public class Main {
         System.out.println("2. Listar todos los usuarios");
         System.out.println("3. Ver ventas del día");
         System.out.println("4. Ver mi información");
-        System.out.println("5. Cerrar sesión");
+        System.out.println("5. Cambiar mi contraseña");
+        System.out.println("6. Cerrar sesión");
         System.out.print("Seleccione opción: ");
         
         int opcion = leerEntero();
@@ -112,9 +110,12 @@ public class Main {
                 crearNuevoAdministrador();
                 System.out.println("\nPresione Enter para continuar...");
                 scanner.nextLine();
-                return false; // Continuar en el menú Sudo
+                return false;
             case 2:
-                sistema.listarUsuarios();
+                System.out.println("\n¿Mostrar contraseñas? (s/n): ");
+                String respuesta = scanner.nextLine().toLowerCase();
+                boolean mostrarPasswords = respuesta.equals("s") || respuesta.equals("si");
+                sistema.listarUsuarios(mostrarPasswords);
                 System.out.println("\nPresione Enter para continuar...");
                 scanner.nextLine();
                 return false;
@@ -124,19 +125,45 @@ public class Main {
                 scanner.nextLine();
                 return false;
             case 4:
-                sistema.getUsuarioActual().mostrarInfo();
+                sistema.getUsuarioActual().mostrarInfo(true);
                 System.out.println("\nPresione Enter para continuar...");
                 scanner.nextLine();
                 return false;
             case 5:
+                cambiarPasswordSudo();
+                System.out.println("\nPresione Enter para continuar...");
+                scanner.nextLine();
+                return false;
+            case 6:
                 sistema.setUsuarioActual(null);
                 System.out.println("Sesión cerrada correctamente.");
-                return true; // Cerrar sesión
+                return true;
             default:
                 System.out.println("Opción inválida");
                 System.out.println("\nPresione Enter para continuar...");
                 scanner.nextLine();
                 return false;
+        }
+    }
+    
+    private static void cambiarPasswordSudo() {
+        System.out.print("Ingrese nueva contraseña: ");
+        String nuevaPassword = scanner.nextLine();
+        
+        System.out.print("Confirme nueva contraseña: ");
+        String confirmPassword = scanner.nextLine();
+        
+        if (nuevaPassword.equals(confirmPassword)) {
+            if (nuevaPassword.length() < 4) {
+                System.out.println("La contraseña debe tener al menos 4 caracteres.");
+                return;
+            }
+            
+            sistema.getUsuarioActual().setPassword(nuevaPassword);
+            DatabaseManager.guardarUsuarios(sistema.getUsuarios());
+            System.out.println("Contraseña cambiada exitosamente.");
+        } else {
+            System.out.println("Las contraseñas no coinciden.");
         }
     }
     
@@ -179,7 +206,7 @@ public class Main {
                 scanner.nextLine();
                 return false;
             case 6:
-                admin.mostrarInfo();
+                admin.mostrarInfo(false);
                 System.out.println("\nPresione Enter para continuar...");
                 scanner.nextLine();
                 return false;
@@ -228,7 +255,7 @@ public class Main {
                 scanner.nextLine();
                 return false;
             case 5:
-                cocinero.mostrarInfo();
+                cocinero.mostrarInfo(false);
                 System.out.println("\nPresione Enter para continuar...");
                 scanner.nextLine();
                 return false;
@@ -283,7 +310,7 @@ public class Main {
                 scanner.nextLine();
                 return false;
             case 6:
-                mesero.mostrarInfo();
+                mesero.mostrarInfo(false);
                 System.out.println("\nPresione Enter para continuar...");
                 scanner.nextLine();
                 return false;
@@ -307,7 +334,10 @@ public class Main {
             System.out.print("Email: ");
             String email = scanner.nextLine();
             
-            Administrador nuevoAdmin = new Administrador(nombre, email);
+            System.out.print("Contraseña: ");
+            String password = scanner.nextLine();
+            
+            Administrador nuevoAdmin = new Administrador(nombre, email, password);
             sistema.agregarUsuario(nuevoAdmin);
             System.out.println("Administrador creado exitosamente");
         } catch (EmailInvalidoException | NombreInvalidoException e) {
@@ -366,7 +396,7 @@ public class Main {
             System.out.println("No hay empleados registrados");
         } else {
             for (Empleado emp : empleados) {
-                emp.mostrarInfo();
+                emp.mostrarInfo(false);
                 System.out.println("-------------------");
             }
         }
@@ -386,12 +416,15 @@ public class Main {
         System.out.print("Email: ");
         String email = scanner.nextLine();
         
+        System.out.print("Contraseña: ");
+        String password = scanner.nextLine();
+        
         try {
             if (tipo == 1) {
-                sistema.agregarUsuario(new Cocinero(nombre, email));
+                sistema.agregarUsuario(new Cocinero(nombre, email, password));
                 System.out.println("Cocinero agregado exitosamente");
             } else if (tipo == 2) {
-                sistema.agregarUsuario(new Mesero(nombre, email));
+                sistema.agregarUsuario(new Mesero(nombre, email, password));
                 System.out.println("Mesero agregado exitosamente");
             } else {
                 System.out.println("Opción inválida");
