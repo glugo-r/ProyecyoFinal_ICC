@@ -5,8 +5,8 @@ import tareas.Tarea;
 
 public class Administrador extends Usuario {
     
-    public Administrador(String nombre, String email) {
-        super(nombre, email, "Administrador");
+    public Administrador(String nombre, String email, String password) {
+        super(nombre, email, "Administrador", password);
     }
     
     public Tarea crearTarea(String titulo, String descripcion, String fechaLimite) {
@@ -19,8 +19,12 @@ public class Administrador extends Usuario {
     }
     
     public void listarUsuarios(List<Usuario> usuarios) {
+        listarUsuarios(usuarios, false);
+    }
+    
+    public void listarUsuarios(List<Usuario> usuarios, boolean mostrarPasswords) {
         for (Usuario usuario : usuarios) {
-            usuario.mostrarInfo();
+            usuario.mostrarInfo(mostrarPasswords);
             System.out.println("-------------------");
         }
     }
